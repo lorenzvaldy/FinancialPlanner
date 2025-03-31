@@ -1,0 +1,311 @@
+{% extends "base.html" %} {% block title %}Financial Reports{% endblock %} {%
+block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Financial Reports</h1>
+    <button type="button" class="btn btn-primary" id="exportReport">
+      <i class="fas fa-download"></i> Export Report
+    </button>
+  </div>
+
+  <!-- Report Period Selection -->
+  <div class="card shadow mb-4">
+    <div class="card-header py-3">
+      <h6 class="m-0 font-weight-bold text-primary">Select Report Period</h6>
+    </div>
+    <div class="card-body">
+      <form id="reportPeriodForm" class="row g-3">
+        <div class="col-md-4">
+          <label for="reportType" class="form-label">Report Type</label>
+          <select class="form-select" id="reportType" required>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="startDate" class="form-label">Start Date</label>
+          <input type="date" class="form-control" id="startDate" required />
+        </div>
+        <div class="col-md-4">
+          <label for="endDate" class="form-label">End Date</label>
+          <input type="date" class="form-control" id="endDate" required />
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Generate Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Financial Summary -->
+  <div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Total Income
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">€0,00</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-arrow-up fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Total Expenses
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">€0,00</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-arrow-down fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Net Income
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">€0,00</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-chart-line fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Savings Rate
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">0%</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-piggy-bank fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row">
+    <div class="col-xl-8 col-lg-7">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Income vs Expenses</h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="incomeExpensesChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-lg-5">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">
+            Expense Distribution
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="expenseDistributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Monthly Trends</h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="monthlyTrendsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Analysis -->
+  <div class="row">
+    <div class="col-xl-6">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">
+            Top Expense Categories
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th>Percentage</th>
+                  <th>Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Expense categories will be populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-6">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Income Sources</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Amount</th>
+                  <th>Percentage</th>
+                  <th>Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Income sources will be populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Initialize charts when the page loads
+  document.addEventListener("DOMContentLoaded", function () {
+    // Income vs Expenses Chart
+    const incomeExpensesData = {
+      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      datasets: [
+        {
+          label: "Income",
+          data: [0, 0, 0, 0, 0, 0],
+          borderColor: "#1cc88a",
+          backgroundColor: "rgba(28, 200, 138, 0.1)",
+        },
+        {
+          label: "Expenses",
+          data: [0, 0, 0, 0, 0, 0],
+          borderColor: "#e74a3b",
+          backgroundColor: "rgba(231, 74, 59, 0.1)",
+        },
+      ],
+    };
+    createLineChart(
+      "incomeExpensesChart",
+      incomeExpensesData.labels,
+      incomeExpensesData.datasets
+    );
+
+    // Expense Distribution Chart
+    const expenseDistributionData = {
+      labels: [
+        "Food",
+        "Transportation",
+        "Housing",
+        "Utilities",
+        "Entertainment",
+        "Other",
+      ],
+      data: [0, 0, 0, 0, 0, 0],
+      colors: [
+        "#4e73df",
+        "#1cc88a",
+        "#36b9cc",
+        "#f6c23e",
+        "#e74a3b",
+        "#858796",
+      ],
+    };
+    createDoughnutChart(
+      "expenseDistributionChart",
+      expenseDistributionData.labels,
+      expenseDistributionData.data,
+      expenseDistributionData.colors
+    );
+
+    // Monthly Trends Chart
+    const monthlyTrendsData = {
+      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      datasets: [
+        {
+          label: "Net Income",
+          data: [0, 0, 0, 0, 0, 0],
+          borderColor: "#4e73df",
+          backgroundColor: "rgba(78, 115, 223, 0.1)",
+        },
+      ],
+    };
+    createLineChart(
+      "monthlyTrendsChart",
+      monthlyTrendsData.labels,
+      monthlyTrendsData.datasets
+    );
+  });
+
+  // Handle report period form submission
+  document
+    .getElementById("reportPeriodForm")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+      const reportData = {
+        type: document.getElementById("reportType").value,
+        startDate: document.getElementById("startDate").value,
+        endDate: document.getElementById("endDate").value,
+      };
+      console.log("Report data:", reportData);
+      // Here you would typically send the data to your backend
+      alert("Report generated successfully!");
+    });
+
+  // Handle report export
+  document
+    .getElementById("exportReport")
+    .addEventListener("click", function () {
+      // Here you would typically handle the report export
+      alert("Report exported successfully!");
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,400 @@
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+    <button
+      type="button"
+      class="btn btn-primary"
+      data-bs-toggle="modal"
+      data-bs-target="#addTransactionModal"
+    >
+      <i class="fas fa-plus"></i> Add Transaction
+    </button>
+  </div>
+
+  <!-- Overview Cards -->
+  <div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Total Balance
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">
+              {{ total_balance|format_currency }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-wallet fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Monthly Income
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">
+              {{ monthly_income|format_currency }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-arrow-up fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Monthly Expenses
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">
+              {{ monthly_expenses|format_currency }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-arrow-down fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="stat-card">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div
+              class="text-xs font-weight-bold text-white-50 text-uppercase mb-1"
+            >
+              Budget Progress
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-white">
+              {{ "%.1f"|format(budget_progress) }}%
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-chart-pie fa-2x text-white-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row">
+    <div class="col-xl-8 col-lg-7">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Monthly Overview</h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="monthlyOverviewChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">
+            Expense Distribution
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="expenseDistributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Overview -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Budget Overview</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Budget</th>
+                  <th>Spent</th>
+                  <th>Remaining</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for budget in monthly_budgets %}
+                <tr>
+                  <td>{{ budget.category }}</td>
+                  <td>{{ budget.amount|format_currency }}</td>
+                  <td>{{ budget.spent|format_currency }}</td>
+                  <td>{{ (budget.amount - budget.spent)|format_currency }}</td>
+                  <td>
+                    <div class="progress rounded-pill" style="height: 20px">
+                      {% if budget.amount > 0 %} {% set progress = (budget.spent
+                      / budget.amount * 100)|round %} {% else %} {% set progress
+                      = 100 %} {% endif %}
+                      <div
+                        class="progress-bar {% if progress > 90 %}bg-danger{% elif progress > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                        role="progressbar"
+                        style="width: {{ progress }}%"
+                        aria-valuenow="{{ progress }}"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                      >
+                        {{ progress }}%
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Recent Transactions</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for transaction in recent_transactions %}
+                <tr>
+                  <td>{{ transaction.date.strftime('%Y-%m-%d') }}</td>
+                  <td>{{ transaction.description }}</td>
+                  <td>{{ transaction.category }}</td>
+                  <td
+                    class="{{ 'text-success' if transaction.type == 'income' else 'text-danger' }}"
+                  >
+                    {{ transaction.amount|format_currency }}
+                  </td>
+                  <td>{{ transaction.type|title }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div
+  class="modal fade"
+  id="addTransactionModal"
+  tabindex="-1"
+  aria-labelledby="addTransactionModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addTransactionModalLabel">
+          Add New Expense
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="addTransactionForm">
+          <input type="hidden" id="transactionType" value="expense" />
+          <div class="mb-3">
+            <label for="amount" class="form-label">Amount (€)</label>
+            <input
+              type="number"
+              class="form-control"
+              id="amount"
+              step="0.01"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <input type="text" class="form-control" id="description" required />
+          </div>
+          <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select" id="category" required>
+              <option value="" disabled selected>Select a category</option>
+              <option value="Food">Food</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Housing">Housing</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Education">Education</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Close
+        </button>
+        <button type="button" class="btn btn-primary" id="saveTransaction">
+          Save Expense
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Initialize charts when the page loads
+  document.addEventListener("DOMContentLoaded", function () {
+    // Monthly Overview Chart
+    const monthlyData = {
+      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      datasets: [
+        {
+          label: "Income",
+          data: [0, 0, 0, 0, 0, 0],
+          borderColor: "#1cc88a",
+          backgroundColor: "rgba(28, 200, 138, 0.1)",
+        },
+        {
+          label: "Expenses",
+          data: [0, 0, 0, 0, 0, 0],
+          borderColor: "#e74a3b",
+          backgroundColor: "rgba(231, 74, 59, 0.1)",
+        },
+      ],
+    };
+    createLineChart(
+      "monthlyOverviewChart",
+      monthlyData.labels,
+      monthlyData.datasets
+    );
+
+    // Expense Distribution Chart
+    const expenseData = {
+      labels: [
+        "Food",
+        "Transportation",
+        "Housing",
+        "Utilities",
+        "Entertainment",
+        "Other",
+      ],
+      data: [0, 0, 0, 0, 0, 0],
+      colors: [
+        "#4e73df",
+        "#1cc88a",
+        "#36b9cc",
+        "#f6c23e",
+        "#e74a3b",
+        "#858796",
+      ],
+    };
+    createDoughnutChart(
+      "expenseDistributionChart",
+      expenseData.labels,
+      expenseData.data,
+      expenseData.colors
+    );
+  });
+
+  // Handle transaction form submission
+  document
+    .getElementById("saveTransaction")
+    .addEventListener("click", function () {
+      const form = document.getElementById("addTransactionForm");
+      if (form.checkValidity()) {
+        // Prepare the transaction data
+        const transactionData = {
+          type: "expense",
+          amount: document.getElementById("amount").value,
+          description: document.getElementById("description").value,
+          category: document.getElementById("category").value,
+        };
+
+        // Send the data to the backend
+        fetch("/add_transaction", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(transactionData),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              // Close the modal
+              const modal = bootstrap.Modal.getInstance(
+                document.getElementById("addTransactionModal")
+              );
+              modal.hide();
+
+              // Reset the form
+              form.reset();
+
+              // Show success message
+              alert("Expense added successfully!");
+
+              // Refresh the page to show updated data
+              window.location.reload();
+            } else {
+              alert("Error: " + data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error saving expense. Please try again.");
+          });
+      } else {
+        form.reportValidity();
+      }
+    });
+</script>
+{% endblock %}

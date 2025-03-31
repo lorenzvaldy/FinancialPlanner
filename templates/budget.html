@@ -1,0 +1,814 @@
+{% extends "base.html" %} {% block title %}Budget Management{% endblock %} {%
+block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Budget Management</h1>
+    <button
+      type="button"
+      class="btn btn-primary shadow-sm"
+      data-bs-toggle="modal"
+      data-bs-target="#addBudgetModal"
+    >
+      <i class="fas fa-plus fa-sm"></i> Add Budget Item
+    </button>
+  </div>
+
+  <!-- Monthly Budget -->
+  <div class="card shadow mb-4 border-0 rounded-3">
+    <div class="card-header py-3 bg-white border-bottom-primary">
+      <h6 class="m-0 font-weight-bold text-primary">
+        <i class="fas fa-calendar-alt me-2"></i>Monthly Budget
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <div class="btn-group">
+          <button
+            class="btn btn-outline-primary dropdown-toggle"
+            type="button"
+            id="sortDropdown"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="fas fa-sort me-1"></i>Sort by
+          </button>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="#" onclick="sortTable('priority')"
+                ><i class="fas fa-layer-group me-2"></i>Priority</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="sortTable('category')"
+                ><i class="fas fa-tag me-2"></i>Category</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="sortTable('amount')"
+                ><i class="fas fa-euro-sign me-2"></i>Amount</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="sortTable('spent')"
+                ><i class="fas fa-shopping-cart me-2"></i>Spent</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="sortTable('remaining')"
+                ><i class="fas fa-wallet me-2"></i>Remaining</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="budgetTable">
+          <thead class="table-light">
+            <tr>
+              <th>Priority</th>
+              <th>Category</th>
+              <th>Budgeted Amount</th>
+              <th>Spent</th>
+              <th>Remaining</th>
+              <th>Progress</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for budget in monthly_budgets %}
+            <tr
+              data-priority="{{ budget.priority }}"
+              data-category="{{ budget.category }}"
+              data-amount="{{ budget.amount }}"
+              data-spent="{{ budget.spent }}"
+              data-remaining="{{ budget.amount - budget.spent }}"
+            >
+              <td>
+                <span
+                  class="badge {% if budget.priority == 1 %}bg-danger{% elif budget.priority == 2 %}bg-warning{% else %}bg-info{% endif %} rounded-pill"
+                >
+                  Priority {{ budget.priority }}
+                </span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <i
+                    class="fas fa-tag {% if budget.priority == 1 %}text-danger{% elif budget.priority == 2 %}text-warning{% else %}text-info{% endif %} me-2"
+                  ></i>
+                  {{ budget.category }}
+                </div>
+              </td>
+              <td>{{ budget.amount|format_currency }}</td>
+              <td>{{ budget.spent|format_currency }}</td>
+              <td
+                class="{% if (budget.amount - budget.spent) < 0 %}text-danger{% elif (budget.amount - budget.spent) == 0 %}text-warning{% else %}text-success{% endif %}"
+              >
+                {{ (budget.amount - budget.spent)|format_currency }}
+              </td>
+              <td style="width: 200px">
+                <div class="progress rounded-pill" style="height: 20px">
+                  {% if budget.amount > 0 %} {% set progress = (budget.spent /
+                  budget.amount * 100)|round %} {% else %} {% set progress = 100
+                  if budget.spent > 0 else 0 %} {% endif %}
+                  <div
+                    class="progress-bar {% if progress > 90 %}bg-danger{% elif progress > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                    role="progressbar"
+                    style="width: {{ progress }}%"
+                    aria-valuenow="{{ progress }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    {{ progress }}%
+                  </div>
+                </div>
+              </td>
+              <td class="text-end">
+                <div class="btn-group">
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm rounded-pill shadow-sm me-2"
+                    onclick="editSpent({{ budget.id }}, '{{ budget.category }}', {{ budget.spent }}, {{ budget.priority }})"
+                  >
+                    <i class="fas fa-edit me-1"></i> Edit Budget
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm rounded-pill shadow-sm"
+                    onclick="confirmDelete({{ budget.id }}, '{{ budget.category }}')"
+                  >
+                    <i class="fas fa-trash-alt me-1"></i> Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td colspan="2">Total</td>
+              <td>
+                {{ monthly_budgets|sum(attribute='amount')|format_currency }}
+              </td>
+              <td>
+                {{ monthly_budgets|sum(attribute='spent')|format_currency }}
+              </td>
+              <td>
+                {{ (monthly_budgets|sum(attribute='amount') -
+                monthly_budgets|sum(attribute='spent'))|format_currency }}
+              </td>
+              <td colspan="2">
+                <div class="progress rounded-pill" style="height: 20px">
+                  {% set total_progress =
+                  (monthly_budgets|sum(attribute='spent') /
+                  monthly_budgets|sum(attribute='amount') * 100)|round if
+                  monthly_budgets|sum(attribute='amount') > 0 else 0 %}
+                  <div
+                    class="progress-bar {% if total_progress > 90 %}bg-danger{% elif total_progress > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                    role="progressbar"
+                    style="width: {{ total_progress }}%"
+                    aria-valuenow="{{ total_progress }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    {{ total_progress }}%
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Yearly Budget -->
+  <div class="card shadow mb-4 border-0 rounded-3">
+    <div class="card-header py-3 bg-white border-bottom-success">
+      <h6 class="m-0 font-weight-bold text-success">
+        <i class="fas fa-calendar me-2"></i>Yearly Budget
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Category</th>
+              <th>Budgeted Amount</th>
+              <th>Spent</th>
+              <th>Remaining</th>
+              <th>Progress</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for budget in yearly_budgets %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-tag text-success me-2"></i>
+                  {{ budget.category }}
+                </div>
+              </td>
+              <td>{{ budget.amount|format_currency }}</td>
+              <td>{{ budget.spent|format_currency }}</td>
+              <td
+                class="{% if (budget.amount - budget.spent) < 0 %}text-danger{% elif (budget.amount - budget.spent) == 0 %}text-warning{% else %}text-success{% endif %}"
+              >
+                {{ (budget.amount - budget.spent)|format_currency }}
+              </td>
+              <td style="width: 200px">
+                <div class="progress rounded-pill" style="height: 20px">
+                  {% if budget.amount > 0 %} {% set progress = (budget.spent /
+                  budget.amount * 100)|round %} {% else %} {% set progress = 100
+                  if budget.spent > 0 else 0 %} {% endif %}
+                  <div
+                    class="progress-bar {% if progress > 90 %}bg-danger{% elif progress > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                    role="progressbar"
+                    style="width: {{ progress }}%"
+                    aria-valuenow="{{ progress }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    {{ progress }}%
+                  </div>
+                </div>
+              </td>
+              <td class="text-end">
+                <button
+                  type="button"
+                  class="btn btn-outline-success btn-sm rounded-pill shadow-sm"
+                  onclick="editSpent({{ budget.id }}, '{{ budget.category }}', {{ budget.spent }})"
+                >
+                  <i class="fas fa-edit me-1"></i> Edit Spent
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>Total</td>
+              <td>
+                {{ yearly_budgets|sum(attribute='amount')|format_currency }}
+              </td>
+              <td>
+                {{ yearly_budgets|sum(attribute='spent')|format_currency }}
+              </td>
+              <td>
+                {{ (yearly_budgets|sum(attribute='amount') -
+                yearly_budgets|sum(attribute='spent'))|format_currency }}
+              </td>
+              <td colspan="2">
+                <div class="progress rounded-pill" style="height: 20px">
+                  {% set total_yearly_progress =
+                  (yearly_budgets|sum(attribute='spent') /
+                  yearly_budgets|sum(attribute='amount') * 100)|round if
+                  yearly_budgets|sum(attribute='amount') > 0 else 0 %}
+                  <div
+                    class="progress-bar {% if total_yearly_progress > 90 %}bg-danger{% elif total_yearly_progress > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                    role="progressbar"
+                    style="width: {{ total_yearly_progress }}%"
+                    aria-valuenow="{{ total_yearly_progress }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    {{ total_yearly_progress }}%
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Budget Modal -->
+<div
+  class="modal fade"
+  id="addBudgetModal"
+  tabindex="-1"
+  aria-labelledby="addBudgetModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addBudgetModalLabel">
+          <i class="fas fa-plus-circle me-2"></i>Add New Budget Item
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="addBudgetForm">
+          <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <div class="input-group mb-2">
+              <select
+                class="form-select shadow-sm"
+                id="categorySelect"
+                onchange="handleCategorySelect(this.value)"
+              >
+                <option value="" disabled selected>
+                  Select or create a category
+                </option>
+                <optgroup label="Priority 1 - Essential">
+                  <option value="Housing">Housing</option>
+                  <option value="Utilities">Utilities</option>
+                  <option value="Food">Food</option>
+                  <option value="Healthcare">Healthcare</option>
+                </optgroup>
+                <optgroup label="Priority 2 - Important">
+                  <option value="Transportation">Transportation</option>
+                  <option value="Education">Education</option>
+                  <option value="Insurance">Insurance</option>
+                </optgroup>
+                <optgroup label="Priority 3 - Discretionary">
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Dining Out">Dining Out</option>
+                  <option value="Hobbies">Hobbies</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Savings">Savings</option>
+                  <option value="Other">Other</option>
+                </optgroup>
+                <option value="custom">+ Add Custom Category</option>
+              </select>
+            </div>
+            <div id="customCategoryGroup" class="d-none">
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control shadow-sm"
+                  id="customCategory"
+                  placeholder="Enter custom category name"
+                />
+                <button
+                  class="btn btn-outline-secondary"
+                  type="button"
+                  onclick="cancelCustomCategory()"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <input type="hidden" id="category" name="category" required />
+          </div>
+          <div class="mb-3">
+            <label for="priority" class="form-label">Priority Level</label>
+            <div class="input-group">
+              <select class="form-select shadow-sm" id="priority" required>
+                <option value="" disabled selected>
+                  Select priority level
+                </option>
+                <option value="1">Priority 1 - Essential</option>
+                <option value="2">Priority 2 - Important</option>
+                <option value="3">Priority 3 - Discretionary</option>
+              </select>
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="popover"
+                data-bs-placement="right"
+                data-bs-html="true"
+                data-bs-content="<strong>Priority 1:</strong> Essential expenses (basic needs)<br><strong>Priority 2:</strong> Important but not critical<br><strong>Priority 3:</strong> Optional/discretionary spending"
+              >
+                <i class="fas fa-info-circle"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="amount" class="form-label">Budget Amount (€)</label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="number"
+                class="form-control shadow-sm"
+                id="amount"
+                step="0.01"
+                required
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="period" class="form-label">Period</label>
+            <select class="form-select shadow-sm" id="period" required>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary rounded-pill"
+          id="saveBudget"
+        >
+          <i class="fas fa-save me-1"></i>Save Budget
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Budget Modal -->
+<div
+  class="modal fade"
+  id="editSpentModal"
+  tabindex="-1"
+  aria-labelledby="editSpentModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editSpentModalLabel">
+          <i class="fas fa-edit me-2"></i>Edit Budget Item
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="editSpentForm">
+          <input type="hidden" id="editBudgetId" />
+          <div class="mb-3">
+            <label for="editCategory" class="form-label">Category Name</label>
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control shadow-sm"
+                id="editCategory"
+              />
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="tooltip"
+                title="Edit category name"
+              >
+                <i class="fas fa-pencil-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="editPriority" class="form-label">Priority Level</label>
+            <div class="input-group">
+              <select class="form-select shadow-sm" id="editPriority">
+                <option value="1">Priority 1 - Essential</option>
+                <option value="2">Priority 2 - Important</option>
+                <option value="3">Priority 3 - Discretionary</option>
+              </select>
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="popover"
+                data-bs-placement="right"
+                data-bs-html="true"
+                data-bs-content="<strong>Priority 1:</strong> Essential expenses (basic needs)<br><strong>Priority 2:</strong> Important but not critical<br><strong>Priority 3:</strong> Optional/discretionary spending"
+              >
+                <i class="fas fa-info-circle"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="editSpentAmount" class="form-label"
+              >Spent Amount (€)</label
+            >
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="number"
+                class="form-control shadow-sm"
+                id="editSpentAmount"
+                step="0.01"
+                required
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary rounded-pill"
+          id="saveSpent"
+        >
+          <i class="fas fa-save me-1"></i>Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div
+  class="modal fade"
+  id="deleteConfirmModal"
+  tabindex="-1"
+  aria-labelledby="deleteConfirmModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteConfirmModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Are you sure you want to delete the budget category "<span
+            id="deleteCategoryName"
+          ></span
+          >"?
+        </p>
+        <p class="text-danger mb-0">
+          <i class="fas fa-exclamation-circle me-2"></i>This action cannot be
+          undone.
+        </p>
+        <input type="hidden" id="deleteBudgetId" />
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger rounded-pill"
+          onclick="deleteBudget()"
+        >
+          <i class="fas fa-trash-alt me-1"></i>Delete Budget
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+  // Function to open edit spent modal
+  function editSpent(budgetId, category, spent, priority) {
+    document.getElementById("editBudgetId").value = budgetId;
+    document.getElementById("editCategory").value = category;
+    document.getElementById("editSpentAmount").value = spent;
+    document.getElementById("editPriority").value = priority;
+
+    const modal = new bootstrap.Modal(
+      document.getElementById("editSpentModal")
+    );
+    modal.show();
+  }
+
+  // Handle category selection
+  function handleCategorySelect(value) {
+    const customCategoryGroup = document.getElementById("customCategoryGroup");
+    const categoryInput = document.getElementById("category");
+    const prioritySelect = document.getElementById("priority");
+
+    if (value === "custom") {
+      customCategoryGroup.classList.remove("d-none");
+      document.getElementById("customCategory").focus();
+      categoryInput.value = "";
+    } else {
+      customCategoryGroup.classList.add("d-none");
+      categoryInput.value = value;
+
+      // Set default priority based on predefined categories
+      if (["Housing", "Utilities", "Food", "Healthcare"].includes(value)) {
+        prioritySelect.value = "1";
+      } else if (["Transportation", "Education", "Insurance"].includes(value)) {
+        prioritySelect.value = "2";
+      } else if (value) {
+        prioritySelect.value = "3";
+      }
+    }
+  }
+
+  // Handle custom category cancel
+  function cancelCustomCategory() {
+    document.getElementById("customCategoryGroup").classList.add("d-none");
+    document.getElementById("categorySelect").value = "";
+    document.getElementById("customCategory").value = "";
+    document.getElementById("category").value = "";
+  }
+
+  // Update hidden category input when custom category changes
+  document
+    .getElementById("customCategory")
+    .addEventListener("input", function (e) {
+      document.getElementById("category").value = e.target.value;
+    });
+
+  // Handle budget form submission
+  document.getElementById("saveBudget").addEventListener("click", function () {
+    const form = document.getElementById("addBudgetForm");
+    if (form.checkValidity()) {
+      const budgetData = {
+        category:
+          document.getElementById("category").value ||
+          document.getElementById("customCategory").value,
+        priority: parseInt(document.getElementById("priority").value),
+        amount: parseFloat(document.getElementById("amount").value),
+        period: document.getElementById("period").value,
+      };
+
+      console.log("Submitting budget data:", budgetData); // Debug log
+
+      // Send the data to the backend
+      fetch("/add_budget", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(budgetData),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            const modal = bootstrap.Modal.getInstance(
+              document.getElementById("addBudgetModal")
+            );
+            modal.hide();
+            form.reset();
+            alert("Budget added successfully!");
+            window.location.reload();
+          } else {
+            alert("Error: " + data.message);
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Error saving budget. Please try again.");
+        });
+    } else {
+      form.reportValidity();
+    }
+  });
+
+  // Handle edit form submission
+  document.getElementById("saveSpent").addEventListener("click", function () {
+    const form = document.getElementById("editSpentForm");
+    if (form.checkValidity()) {
+      const updateData = {
+        budget_id: parseInt(document.getElementById("editBudgetId").value),
+        category: document.getElementById("editCategory").value,
+        priority: parseInt(document.getElementById("editPriority").value),
+        spent: parseFloat(document.getElementById("editSpentAmount").value),
+      };
+
+      console.log("Submitting update data:", updateData); // Debug log
+
+      // Send the data to the backend
+      fetch("/update_budget", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            const modal = bootstrap.Modal.getInstance(
+              document.getElementById("editSpentModal")
+            );
+            modal.hide();
+            alert("Budget item updated successfully!");
+            window.location.reload();
+          } else {
+            alert("Error: " + data.message);
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Error updating budget item. Please try again.");
+        });
+    } else {
+      form.reportValidity();
+    }
+  });
+
+  // Sorting function
+  function sortTable(column) {
+    const table = document.getElementById("budgetTable");
+    const tbody = table.querySelector("tbody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+
+    rows.sort((a, b) => {
+      let aValue = a.dataset[column];
+      let bValue = b.dataset[column];
+
+      if (
+        column === "priority" ||
+        column === "amount" ||
+        column === "spent" ||
+        column === "remaining"
+      ) {
+        return parseFloat(aValue) - parseFloat(bValue);
+      } else {
+        return aValue.localeCompare(bValue);
+      }
+    });
+
+    // Clear the table body
+    tbody.innerHTML = "";
+
+    // Add sorted rows back to the table
+    rows.forEach((row) => tbody.appendChild(row));
+  }
+
+  // Initialize tooltips
+  var tooltipTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+  );
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+
+  // Initialize popovers
+  var popoverTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="popover"]')
+  );
+  var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+    return new bootstrap.Popover(popoverTriggerEl);
+  });
+
+  // Function to show delete confirmation modal
+  function confirmDelete(budgetId, category) {
+    document.getElementById("deleteBudgetId").value = budgetId;
+    document.getElementById("deleteCategoryName").textContent = category;
+    const modal = new bootstrap.Modal(
+      document.getElementById("deleteConfirmModal")
+    );
+    modal.show();
+  }
+
+  // Function to delete budget
+  function deleteBudget() {
+    const budgetId = document.getElementById("deleteBudgetId").value;
+
+    fetch("/delete_budget", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        budget_id: parseInt(budgetId),
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          const modal = bootstrap.Modal.getInstance(
+            document.getElementById("deleteConfirmModal")
+          );
+          modal.hide();
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert("Error: " + data.message);
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Error deleting budget. Please try again.");
+      });
+  }
+</script>
+{% endblock %}

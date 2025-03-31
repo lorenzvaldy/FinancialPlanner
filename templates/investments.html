@@ -1,0 +1,317 @@
+{% extends "base.html" %} {% block title %}Investment Allocation{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Investment Allocation</h1>
+  </div>
+
+  <!-- Available Investments Card -->
+  <div class="row mb-4">
+    <div class="col-xl-6 col-md-6 mb-4">
+      <div class="card border-left-success shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-success text-uppercase mb-1"
+              >
+                Available for Investment (from Savings)
+              </div>
+              <div class="h5 mb-0 font-weight-bold text-gray-800">
+                {{ total_available|format_currency }}
+              </div>
+              <div class="text-xs text-muted mt-1">
+                From Investment category in Savings Allocation
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-6 col-md-6 mb-4">
+      <div class="card border-left-info shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-info text-uppercase mb-1"
+              >
+                Allocated Investments
+              </div>
+              <div
+                class="h5 mb-0 font-weight-bold text-gray-800 allocated-investments"
+              >
+                {{ total_allocated|format_currency }}
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Investment Distribution -->
+  <div class="row">
+    <div class="col-xl-8 col-lg-7">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">
+            Investment Distribution
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="investmentDistributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+      <div class="card shadow mb-4">
+        <div
+          class="card-header py-3 d-flex justify-content-between align-items-center"
+        >
+          <h6 class="m-0 font-weight-bold text-primary">
+            Investment Allocations
+          </h6>
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#addInvestmentModal"
+          >
+            <i class="fas fa-plus fa-sm"></i> Add
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th>Amount</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for allocation in investment_allocations %}
+                <tr>
+                  <td>{{ allocation.category }}</td>
+                  <td>{{ allocation.name }}</td>
+                  <td>{{ allocation.amount|format_currency }}</td>
+                  <td class="text-end">
+                    <button
+                      class="btn btn-sm btn-info me-1"
+                      onclick="editAllocation({{ allocation.id }}, '{{ allocation.category }}', '{{ allocation.name }}', {{ allocation.amount }})"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      onclick="deleteAllocation({{ allocation.id }}, '{{ allocation.name if allocation.name else allocation.category }}')"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %} {% if not investment_allocations %}
+                <tr>
+                  <td colspan="4" class="text-center text-muted">
+                    No investment allocations yet
+                  </td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Investment Modal -->
+<div
+  class="modal fade"
+  id="addInvestmentModal"
+  tabindex="-1"
+  aria-labelledby="addInvestmentModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addInvestmentModalLabel">
+          Add Investment Allocation
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="addInvestmentForm">
+          <input type="hidden" id="editAllocationId" />
+          <div class="mb-3">
+            <label for="investmentType" class="form-label"
+              >Investment Type</label
+            >
+            <select class="form-select" id="investmentType" required>
+              <option value="" disabled selected>Select investment type</option>
+              <option value="Stocks">Stocks</option>
+              <option value="Bonds">Bonds</option>
+              <option value="ETFs">ETFs</option>
+              <option value="Crypto">Cryptocurrency</option>
+              <option value="Real Estate">Real Estate</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="investmentName" class="form-label"
+              >Investment Name</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="investmentName"
+              required
+              placeholder="e.g., Apple Inc., S&P 500 ETF"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="amount" class="form-label">Amount</label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="number"
+                class="form-control"
+                id="amount"
+                step="0.01"
+                min="0"
+                required
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" id="saveInvestment">
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the distribution chart
+    const ctx = document.getElementById('investmentDistributionChart').getContext('2d');
+    const investmentDistributionChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: {{ investment_allocations|map(attribute='category')|list|tojson }},
+        datasets: [{
+          data: {{ investment_allocations|map(attribute='amount')|list|tojson }},
+          backgroundColor: [
+            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+
+    // Handle form submission
+    document.getElementById('saveInvestment').addEventListener('click', function() {
+      const form = document.getElementById('addInvestmentForm');
+      if (form.checkValidity()) {
+        const editId = document.getElementById('editAllocationId').value;
+        const data = {
+          type: document.getElementById('investmentType').value,
+          name: document.getElementById('investmentName').value || '',
+          amount: parseFloat(document.getElementById('amount').value)
+        };
+
+        const url = editId ? '/update_investment_allocation' : '/add_investment_allocation';
+        if (editId) {
+          data.allocation_id = parseInt(editId);
+        }
+
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert('Error: ' + data.message);
+          }
+        });
+      } else {
+        form.reportValidity();
+      }
+    });
+  });
+
+  function editAllocation(id, category, name, amount) {
+    document.getElementById('editAllocationId').value = id;
+    document.getElementById('investmentType').value = category;
+    document.getElementById('investmentName').value = name || '';
+    document.getElementById('amount').value = amount;
+
+    const modal = new bootstrap.Modal(document.getElementById('addInvestmentModal'));
+    modal.show();
+  }
+
+  function deleteAllocation(id, name) {
+    if (confirm(`Are you sure you want to delete the investment "${name}"?`)) {
+      fetch('/delete_investment_allocation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          allocation_id: id
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      });
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock %} - Financial Planner</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="{{ url_for('static', filename='css/style.css') }}"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        overflow-x: hidden;
+        background-color: #f8f9fc;
+      }
+
+      #wrapper {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        flex: 0 0 16rem;
+        background: rgb(54, 53, 131);
+        transition: all 0.3s ease;
+        position: fixed;
+        height: 100vh;
+        z-index: 1000;
+        overflow-y: auto;
+      }
+
+      .sidebar.toggled {
+        flex: 0 0 4.5rem;
+        width: 4.5rem;
+      }
+
+      /* Sidebar Content */
+      .sidebar-content {
+        padding: 1rem;
+        width: 16rem;
+        transition: width 0.3s ease;
+      }
+
+      .sidebar.toggled .sidebar-content {
+        width: 4.5rem;
+        padding: 1rem 0;
+      }
+
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        color: white;
+        text-decoration: none;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .sidebar-brand:hover {
+        color: white;
+      }
+
+      .sidebar-brand i {
+        font-size: 1.5rem;
+      }
+
+      .sidebar-brand span {
+        margin-left: 0.75rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+      }
+
+      /* Toggle Button */
+      .sidebar-toggle {
+        position: absolute;
+        top: 1.25rem;
+        right: -12px;
+        width: 24px;
+        height: 24px;
+        background: white;
+        border: none;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        z-index: 1001;
+      }
+
+      .sidebar-toggle i {
+        font-size: 0.8rem;
+        color: #6f42c1;
+        transition: transform 0.3s;
+      }
+
+      .sidebar.toggled .sidebar-toggle i {
+        transform: rotate(180deg);
+      }
+
+      /* Navigation */
+      .nav-items {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .nav-item {
+        margin: 0.25rem 0;
+        width: 100%;
+      }
+
+      .nav-link {
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: rgba(255, 255, 255, 0.9) !important;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        overflow: hidden;
+        width: 100%;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        color: white !important;
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .nav-link i {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+      }
+
+      .nav-link span {
+        margin-left: 0.5rem;
+      }
+
+      /* Collapse Items */
+      .collapse-inner {
+        margin: 0.25rem 0;
+        padding-left: 1rem;
+        border-left: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+        width: 100%;
+      }
+
+      .sub-collapse-inner {
+        margin: 0.25rem 0;
+        padding-left: 1.5rem;
+        border-left: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+        width: 100%;
+      }
+
+      .collapse-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        overflow: hidden;
+        width: 100%;
+      }
+
+      .collapse-item:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .collapse-item i {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+
+      .collapse-item span {
+        margin-left: 0.5rem;
+      }
+
+      /* Content Wrapper */
+      #content-wrapper {
+        flex: 1;
+        margin-left: 16rem;
+        transition: margin-left 0.3s ease;
+        min-width: 0;
+      }
+
+      body.sidebar-toggled #content-wrapper {
+        margin-left: 4.5rem;
+      }
+
+      /* Toggled State */
+      .sidebar.toggled {
+        overflow: visible;
+      }
+
+      .sidebar.toggled .sidebar-brand {
+        padding: 0.5rem 0;
+        justify-content: center;
+      }
+
+      .sidebar.toggled .sidebar-brand i {
+        margin: 0;
+      }
+
+      .sidebar.toggled .sidebar-brand span,
+      .sidebar.toggled .nav-link span,
+      .sidebar.toggled .collapse-item span {
+        display: none;
+      }
+
+      .sidebar.toggled .nav-link,
+      .sidebar.toggled .collapse-item {
+        justify-content: center;
+        padding: 0.75rem 0;
+      }
+
+      .sidebar.toggled .nav-link i,
+      .sidebar.toggled .collapse-item i {
+        width: 4.5rem;
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .sidebar.toggled .collapse-inner,
+      .sidebar.toggled .sub-collapse-inner {
+        margin: 0;
+        padding: 0;
+        border-left: none;
+      }
+
+      .sidebar.toggled .collapse.show {
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .sidebar {
+          width: 4.5rem;
+          overflow: visible;
+        }
+
+        .sidebar-content {
+          width: 4.5rem;
+          padding: 1rem 0;
+        }
+
+        .sidebar .sidebar-brand {
+          padding: 0.5rem 0;
+          justify-content: center;
+        }
+
+        .sidebar .sidebar-brand i {
+          margin: 0;
+        }
+
+        .sidebar .nav-link,
+        .sidebar .collapse-item {
+          justify-content: center;
+          padding: 0.75rem 0;
+        }
+
+        .sidebar .nav-link i,
+        .sidebar .collapse-item i {
+          width: 4.5rem;
+          margin: 0;
+          font-size: 1.2rem;
+        }
+
+        .sidebar .collapse-inner,
+        .sidebar .sub-collapse-inner {
+          margin: 0;
+          padding: 0;
+          border-left: none;
+        }
+
+        .sidebar .collapse.show {
+          background: rgba(0, 0, 0, 0.1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrapper">
+      <!-- Sidebar -->
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+          <!-- Sidebar Brand -->
+          <a class="sidebar-brand" href="/">
+            <i class="fas fa-credit-card"></i>
+            <span>Financial Planner</span>
+          </a>
+
+          <!-- Toggle Button -->
+          <button class="sidebar-toggle" id="sidebarToggle">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+
+          <!-- Nav Items -->
+          <ul class="nav-items">
+            <!-- Dashboard -->
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+              </a>
+            </li>
+
+            <!-- Budget Management -->
+            <li class="nav-item">
+              <a
+                class="nav-link collapsed"
+                href="#"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseBudget"
+              >
+                <i class="fas fa-wallet"></i>
+                <span>Budget Management</span>
+              </a>
+              <div
+                id="collapseBudget"
+                class="collapse"
+                data-bs-parent="#sidebar"
+              >
+                <div class="collapse-inner">
+                  <a class="collapse-item" href="/budget">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Budget Overview</span>
+                  </a>
+                  <a class="collapse-item" href="/subscriptions">
+                    <i class="fas fa-sync"></i>
+                    <span>Subscriptions</span>
+                  </a>
+                  <a
+                    class="collapse-item collapsed"
+                    href="#"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseSavings"
+                  >
+                    <i class="fas fa-piggy-bank"></i>
+                    <span>Savings</span>
+                  </a>
+                  <div id="collapseSavings" class="collapse">
+                    <div class="sub-collapse-inner">
+                      <a class="collapse-item" href="/savings">
+                        <i class="fas fa-piggy-bank"></i>
+                        <span>Overview</span>
+                      </a>
+                      <a class="collapse-item" href="/investments">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Investments</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <!-- Reports -->
+            <li class="nav-item">
+              <a class="nav-link" href="/reports">
+                <i class="fas fa-chart-line"></i>
+                <span>Reports</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <!-- Content Wrapper -->
+      <div id="content-wrapper">
+        <!-- Main Content -->
+        <div id="content">
+          <!-- Topbar -->
+          <nav
+            class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow"
+          >
+            <!-- Topbar Navbar -->
+            <ul class="navbar-nav ml-auto">
+              <!-- Nav Item - User Information -->
+              <li class="nav-item dropdown no-arrow">
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  id="userDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <span class="mr-2 d-none d-lg-inline text-gray-600 small"
+                    >Personal Account</span
+                  >
+                  <i class="fas fa-user fa-fw"></i>
+                </a>
+              </li>
+            </ul>
+          </nav>
+
+          <!-- Begin Page Content -->
+          <div class="container-fluid">{% block content %}{% endblock %}</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+      document
+        .getElementById("sidebarToggle")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+          document.body.classList.toggle("sidebar-toggled");
+          document.querySelector(".sidebar").classList.toggle("toggled");
+
+          // Update toggle button icon
+          const icon = this.querySelector("i");
+          if (
+            document.querySelector(".sidebar").classList.contains("toggled")
+          ) {
+            icon.classList.remove("fa-chevron-left");
+            icon.classList.add("fa-chevron-right");
+          } else {
+            icon.classList.remove("fa-chevron-right");
+            icon.classList.add("fa-chevron-left");
+          }
+        });
+
+      // Close any open menu accordions when window is resized below 768px
+      window.addEventListener("resize", function () {
+        if (window.innerWidth < 768) {
+          document
+            .querySelectorAll(".sidebar .collapse")
+            .forEach(function (collapseEl) {
+              const collapse = bootstrap.Collapse.getInstance(collapseEl);
+              if (collapse && !collapseEl.classList.contains("show")) {
+                collapse.hide();
+              }
+            });
+        }
+      });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

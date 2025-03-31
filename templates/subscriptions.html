@@ -1,0 +1,646 @@
+{% extends "base.html" %} {% block title %}Subscription Management{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Subscription Management</h1>
+    <button
+      type="button"
+      class="btn btn-primary shadow-sm"
+      data-bs-toggle="modal"
+      data-bs-target="#addSubscriptionModal"
+    >
+      <i class="fas fa-plus fa-sm"></i> Add Subscription
+    </button>
+  </div>
+
+  <!-- Subscription Overview Cards -->
+  <div class="row mb-4">
+    <div class="col-xl-6 col-md-6 mb-4">
+      <div class="card border-left-primary shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-primary text-uppercase mb-1"
+              >
+                Monthly Subscriptions Total
+              </div>
+              <div class="h5 mb-0 font-weight-bold text-gray-800">
+                {{ monthly_total|format_currency }}
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-calendar fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-6 col-md-6 mb-4">
+      <div class="card border-left-success shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-success text-uppercase mb-1"
+              >
+                Yearly Subscriptions Total
+              </div>
+              <div class="h5 mb-0 font-weight-bold text-gray-800">
+                {{ yearly_total|format_currency }}
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscriptions Table -->
+  <div class="card shadow mb-4 border-0 rounded-3">
+    <div class="card-header py-3 bg-white border-bottom-primary">
+      <h6 class="m-0 font-weight-bold text-primary">
+        <i class="fas fa-list me-2"></i>Active Subscriptions
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="subscriptionsTable">
+          <thead class="table-light">
+            <tr>
+              <th>Priority</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Billing Cycle</th>
+              <th>Description</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for subscription in subscriptions %}
+            <tr>
+              <td>
+                <span
+                  class="badge {% if subscription.priority == 1 %}bg-danger{% elif subscription.priority == 2 %}bg-warning{% else %}bg-info{% endif %} rounded-pill"
+                >
+                  Priority {{ subscription.priority }}
+                </span>
+              </td>
+              <td>{{ subscription.name }}</td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <i
+                    class="fas fa-tag {% if subscription.priority == 1 %}text-danger{% elif subscription.priority == 2 %}text-warning{% else %}text-info{% endif %} me-2"
+                  ></i>
+                  {{ subscription.category }}
+                </div>
+              </td>
+              <td>{{ subscription.amount|format_currency }}</td>
+              <td>
+                <span
+                  class="badge {% if subscription.billing_cycle == 'monthly' %}bg-primary{% else %}bg-success{% endif %} rounded-pill"
+                >
+                  {{ subscription.billing_cycle|title }}
+                </span>
+              </td>
+              <td>{{ subscription.description or '-' }}</td>
+              <td class="text-end">
+                <div class="btn-group">
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm rounded-pill shadow-sm me-2"
+                    onclick="editSubscription({{ subscription.id }}, '{{ subscription.name }}', '{{ subscription.category }}', {{ subscription.amount }}, '{{ subscription.billing_cycle }}', '{{ subscription.description }}', {{ subscription.priority }})"
+                  >
+                    <i class="fas fa-edit me-1"></i> Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm rounded-pill shadow-sm"
+                    onclick="confirmCancel({{ subscription.id }}, '{{ subscription.name }}')"
+                  >
+                    <i class="fas fa-times me-1"></i> Cancel
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Subscription Modal -->
+<div
+  class="modal fade"
+  id="addSubscriptionModal"
+  tabindex="-1"
+  aria-labelledby="addSubscriptionModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addSubscriptionModalLabel">
+          <i class="fas fa-plus-circle me-2"></i>Add New Subscription
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="addSubscriptionForm">
+          <div class="mb-3">
+            <label for="name" class="form-label">Subscription Name</label>
+            <input
+              type="text"
+              class="form-control shadow-sm"
+              id="name"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select shadow-sm" id="category" required>
+              <option value="" disabled selected>Select a category</option>
+              <optgroup label="Entertainment">
+                <option value="Streaming">Streaming Services</option>
+                <option value="Gaming">Gaming Services</option>
+                <option value="Music">Music Services</option>
+              </optgroup>
+              <optgroup label="Software">
+                <option value="Productivity">Productivity Tools</option>
+                <option value="Security">Security Software</option>
+                <option value="Cloud">Cloud Storage</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="Fitness">Fitness Apps</option>
+                <option value="Education">Education</option>
+                <option value="Other">Other</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="priority" class="form-label">Priority Level</label>
+            <div class="input-group">
+              <select class="form-select shadow-sm" id="priority" required>
+                <option value="" disabled selected>
+                  Select priority level
+                </option>
+                <option value="1">Priority 1 - Essential</option>
+                <option value="2">Priority 2 - Important</option>
+                <option value="3">Priority 3 - Optional</option>
+              </select>
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="popover"
+                data-bs-placement="right"
+                data-bs-html="true"
+                data-bs-content="<strong>Priority 1:</strong> Essential subscriptions<br><strong>Priority 2:</strong> Important but not critical<br><strong>Priority 3:</strong> Optional subscriptions"
+              >
+                <i class="fas fa-info-circle"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="amount" class="form-label">Amount (€)</label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="text"
+                class="form-control shadow-sm"
+                id="amount"
+                pattern="[0-9,]*[,]?[0-9]{0,2}"
+                placeholder="0,00"
+                required
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="billing_cycle" class="form-label">Billing Cycle</label>
+            <select class="form-select shadow-sm" id="billing_cycle" required>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label"
+              >Description (Optional)</label
+            >
+            <textarea
+              class="form-control shadow-sm"
+              id="description"
+              rows="2"
+            ></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary rounded-pill"
+          id="saveSubscription"
+        >
+          <i class="fas fa-save me-1"></i>Save Subscription
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Subscription Modal -->
+<div
+  class="modal fade"
+  id="editSubscriptionModal"
+  tabindex="-1"
+  aria-labelledby="editSubscriptionModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editSubscriptionModalLabel">
+          <i class="fas fa-edit me-2"></i>Edit Subscription
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="editSubscriptionForm">
+          <input type="hidden" id="edit_subscription_id" />
+          <div class="mb-3">
+            <label for="edit_name" class="form-label">Subscription Name</label>
+            <input
+              type="text"
+              class="form-control shadow-sm"
+              id="edit_name"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="edit_category" class="form-label">Category</label>
+            <select class="form-select shadow-sm" id="edit_category" required>
+              <option value="" disabled>Select a category</option>
+              <optgroup label="Entertainment">
+                <option value="Streaming">Streaming Services</option>
+                <option value="Gaming">Gaming Services</option>
+                <option value="Music">Music Services</option>
+              </optgroup>
+              <optgroup label="Software">
+                <option value="Productivity">Productivity Tools</option>
+                <option value="Security">Security Software</option>
+                <option value="Cloud">Cloud Storage</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="Fitness">Fitness Apps</option>
+                <option value="Education">Education</option>
+                <option value="Other">Other</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="edit_priority" class="form-label">Priority Level</label>
+            <div class="input-group">
+              <select class="form-select shadow-sm" id="edit_priority" required>
+                <option value="1">Priority 1 - Essential</option>
+                <option value="2">Priority 2 - Important</option>
+                <option value="3">Priority 3 - Optional</option>
+              </select>
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="popover"
+                data-bs-placement="right"
+                data-bs-html="true"
+                data-bs-content="<strong>Priority 1:</strong> Essential subscriptions<br><strong>Priority 2:</strong> Important but not critical<br><strong>Priority 3:</strong> Optional subscriptions"
+              >
+                <i class="fas fa-info-circle"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="edit_amount" class="form-label">Amount (€)</label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="text"
+                class="form-control shadow-sm"
+                id="edit_amount"
+                pattern="[0-9,]*[,]?[0-9]{0,2}"
+                placeholder="0,00"
+                required
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="edit_billing_cycle" class="form-label"
+              >Billing Cycle</label
+            >
+            <select
+              class="form-select shadow-sm"
+              id="edit_billing_cycle"
+              required
+            >
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="edit_description" class="form-label"
+              >Description (Optional)</label
+            >
+            <textarea
+              class="form-control shadow-sm"
+              id="edit_description"
+              rows="2"
+            ></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary rounded-pill"
+          id="updateSubscription"
+        >
+          <i class="fas fa-save me-1"></i>Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div
+  class="modal fade"
+  id="cancelConfirmModal"
+  tabindex="-1"
+  aria-labelledby="cancelConfirmModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="cancelConfirmModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Confirm Cancellation
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Are you sure you want to cancel the subscription "<span
+            id="cancelSubscriptionName"
+          ></span
+          >"?
+        </p>
+        <p class="text-danger mb-0">
+          <i class="fas fa-exclamation-circle me-2"></i>This will mark the
+          subscription as inactive.
+        </p>
+        <input type="hidden" id="cancelSubscriptionId" />
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          <i class="fas fa-times me-1"></i>Keep Subscription
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger rounded-pill"
+          onclick="cancelSubscription()"
+        >
+          <i class="fas fa-check me-1"></i>Yes, Cancel It
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+  // Function to convert comma-separated number to float
+  function parseCommaNumber(value) {
+    return parseFloat(value.replace(",", "."));
+  }
+
+  // Function to format number with comma
+  function formatCommaNumber(value) {
+    return value.toString().replace(".", ",");
+  }
+
+  // Function to open edit subscription modal
+  function editSubscription(
+    id,
+    name,
+    category,
+    amount,
+    billing_cycle,
+    description,
+    priority
+  ) {
+    document.getElementById("edit_subscription_id").value = id;
+    document.getElementById("edit_name").value = name;
+    document.getElementById("edit_category").value = category;
+    document.getElementById("edit_amount").value = formatCommaNumber(amount);
+    document.getElementById("edit_billing_cycle").value = billing_cycle;
+    document.getElementById("edit_description").value = description || "";
+    document.getElementById("edit_priority").value = priority;
+
+    const modal = new bootstrap.Modal(
+      document.getElementById("editSubscriptionModal")
+    );
+    modal.show();
+  }
+
+  // Function to show cancel confirmation modal
+  function confirmCancel(subscriptionId, name) {
+    document.getElementById("cancelSubscriptionId").value = subscriptionId;
+    document.getElementById("cancelSubscriptionName").textContent = name;
+    const modal = new bootstrap.Modal(
+      document.getElementById("cancelConfirmModal")
+    );
+    modal.show();
+  }
+
+  // Handle subscription form submission
+  document
+    .getElementById("saveSubscription")
+    .addEventListener("click", function () {
+      const form = document.getElementById("addSubscriptionForm");
+      if (form.checkValidity()) {
+        const subscriptionData = {
+          name: document.getElementById("name").value,
+          category: document.getElementById("category").value,
+          amount: parseCommaNumber(document.getElementById("amount").value),
+          billing_cycle: document.getElementById("billing_cycle").value,
+          description: document.getElementById("description").value,
+          priority: parseInt(document.getElementById("priority").value),
+        };
+
+        // Send the data to the backend
+        fetch("/add_subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(subscriptionData),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              const modal = bootstrap.Modal.getInstance(
+                document.getElementById("addSubscriptionModal")
+              );
+              modal.hide();
+              form.reset();
+              alert("Subscription added successfully!");
+              window.location.reload();
+            } else {
+              alert("Error: " + data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error saving subscription. Please try again.");
+          });
+      } else {
+        form.reportValidity();
+      }
+    });
+
+  // Handle edit form submission
+  document
+    .getElementById("updateSubscription")
+    .addEventListener("click", function () {
+      const form = document.getElementById("editSubscriptionForm");
+      if (form.checkValidity()) {
+        const updateData = {
+          subscription_id: parseInt(
+            document.getElementById("edit_subscription_id").value
+          ),
+          name: document.getElementById("edit_name").value,
+          category: document.getElementById("edit_category").value,
+          amount: parseCommaNumber(
+            document.getElementById("edit_amount").value
+          ),
+          billing_cycle: document.getElementById("edit_billing_cycle").value,
+          description: document.getElementById("edit_description").value,
+          priority: parseInt(document.getElementById("edit_priority").value),
+        };
+
+        // Send the data to the backend
+        fetch("/update_subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              const modal = bootstrap.Modal.getInstance(
+                document.getElementById("editSubscriptionModal")
+              );
+              modal.hide();
+              alert("Subscription updated successfully!");
+              window.location.reload();
+            } else {
+              alert("Error: " + data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error updating subscription. Please try again.");
+          });
+      } else {
+        form.reportValidity();
+      }
+    });
+
+  // Function to cancel subscription
+  function cancelSubscription() {
+    const subscriptionId = document.getElementById(
+      "cancelSubscriptionId"
+    ).value;
+
+    fetch("/cancel_subscription", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subscription_id: parseInt(subscriptionId),
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          const modal = bootstrap.Modal.getInstance(
+            document.getElementById("cancelConfirmModal")
+          );
+          modal.hide();
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert("Error: " + data.message);
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Error cancelling subscription. Please try again.");
+      });
+  }
+
+  // Initialize tooltips and popovers
+  var tooltipTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+  );
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+
+  var popoverTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="popover"]')
+  );
+  var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+    return new bootstrap.Popover(popoverTriggerEl);
+  });
+</script>
+{% endblock %}

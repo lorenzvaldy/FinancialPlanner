@@ -1,0 +1,495 @@
+{% extends "base.html" %} {% block title %}Savings Allocation{% endblock %} {%
+block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Savings Allocation</h1>
+  </div>
+
+  <!-- Available Savings Card -->
+  <div class="row mb-4">
+    <div class="col-xl-6 col-md-6 mb-4">
+      <div class="card border-left-success shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-success text-uppercase mb-1"
+              >
+                Available Savings (from Budget)
+              </div>
+              <div class="h5 mb-0 font-weight-bold text-gray-800">
+                {{ total_available|format_currency }}
+              </div>
+              <div class="text-xs text-muted mt-1">
+                From Savings category in Budget Overview
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-piggy-bank fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-6 col-md-6 mb-4">
+      <div class="card border-left-info shadow h-100 py-2">
+        <div class="card-body">
+          <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+              <div
+                class="text-xs font-weight-bold text-info text-uppercase mb-1"
+              >
+                Allocated Savings
+              </div>
+              <div
+                class="h5 mb-0 font-weight-bold text-gray-800 allocated-savings"
+              >
+                {{ total_allocated|format_currency }}
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Savings Distribution -->
+  <div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+      <div class="card shadow mb-4">
+        <div
+          class="card-header py-3 d-flex justify-content-between align-items-center"
+        >
+          <h6 class="m-0 font-weight-bold text-primary">
+            Savings Distribution
+          </h6>
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#allocateSavingsModal"
+          >
+            <i class="fas fa-plus fa-sm"></i> Allocate Savings
+          </button>
+        </div>
+        <div class="card-body">
+          <div
+            class="chart-container"
+            style="position: relative; height: 300px"
+          >
+            <canvas id="savingsDistributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">Allocation Details</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for allocation in savings_allocations %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <i class="fas fa-piggy-bank text-primary me-2"></i>
+                      {{ allocation.category }}
+                    </div>
+                  </td>
+                  <td>{{ allocation.amount|format_currency }}</td>
+                  <td class="text-end">
+                    <div class="btn-group">
+                      <button
+                        type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        onclick="editAllocation({{ allocation.id }}, '{{ allocation.category }}', {{ allocation.amount }})"
+                      >
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        onclick="deleteAllocation({{ allocation.id }}, '{{ allocation.category }}')"
+                      >
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot class="table-light fw-bold">
+                <tr>
+                  <td>Total Allocated</td>
+                  <td colspan="2">{{ total_allocated|format_currency }}</td>
+                </tr>
+                <tr>
+                  <td>Remaining</td>
+                  <td
+                    colspan="2"
+                    class="{% if (total_available - total_allocated) < 0 %}text-danger{% else %}text-success{% endif %}"
+                  >
+                    {{ (total_available - total_allocated)|format_currency }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Allocate Savings Modal -->
+<div
+  class="modal fade"
+  id="allocateSavingsModal"
+  tabindex="-1"
+  aria-labelledby="allocateSavingsModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="allocateSavingsModalLabel">
+          <i class="fas fa-piggy-bank me-2"></i>Allocate Savings
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="allocateSavingsForm">
+          <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <div class="input-group">
+              <select class="form-select shadow-sm" id="category" required>
+                <option value="" disabled selected>Select a category</option>
+                <option value="Emergency Fund">Emergency Fund</option>
+                <option value="Investment">Investment</option>
+                <option value="Retirement">Retirement</option>
+                <option value="custom">Custom Category</option>
+              </select>
+              <button
+                class="btn btn-outline-secondary"
+                type="button"
+                id="toggleCustomCategory"
+              >
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+            <div id="customCategoryInput" class="mt-2" style="display: none">
+              <input
+                type="text"
+                class="form-control shadow-sm"
+                id="customCategory"
+                placeholder="Enter custom category name"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="amount" class="form-label"
+              >Amount to Allocate (€)</label
+            >
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="text"
+                class="form-control shadow-sm"
+                id="amount"
+                pattern="[0-9,]*[,]?[0-9]{0,2}"
+                placeholder="0,00"
+                required
+              />
+            </div>
+            <div class="form-text text-muted">
+              Available to allocate: {{ (total_available -
+              total_allocated)|format_currency }}
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" id="saveAllocation">
+          <i class="fas fa-save me-1"></i>Save Allocation
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Allocation Modal -->
+<div
+  class="modal fade"
+  id="editAllocationModal"
+  tabindex="-1"
+  aria-labelledby="editAllocationModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editAllocationModalLabel">
+          <i class="fas fa-edit me-2"></i>Edit Allocation
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="editAllocationForm">
+          <input type="hidden" id="editAllocationId" />
+          <input type="hidden" id="editCategory" />
+          <div class="mb-3">
+            <label for="editAmount" class="form-label">Amount (€)</label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input
+                type="text"
+                class="form-control shadow-sm"
+                id="editAmount"
+                pattern="[0-9,]*[,]?[0-9]{0,2}"
+                placeholder="0,00"
+                required
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" id="updateAllocation">
+          <i class="fas fa-save me-1"></i>Update Allocation
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Function to convert comma-separated number to float
+  function parseCommaNumber(value) {
+    return parseFloat(value.replace(',', '.'));
+  }
+
+  // Function to format number with comma
+  function formatCommaNumber(value) {
+    return value.toString().replace('.', ',');
+  }
+
+  // Savings Distribution Chart
+  const savingsData = {{ serialized_allocations|tojson }};
+  console.log('Raw savings data:', savingsData); // Debug log
+
+  // Filter out any empty or null values
+  const filteredData = savingsData.filter(allocation =>
+    allocation.amount !== null &&
+    allocation.amount !== undefined &&
+    allocation.amount !== 0
+  );
+  console.log('Filtered data:', filteredData); // Debug log
+
+  // Group by category and sum amounts
+  const categoryMap = new Map();
+  filteredData.forEach(allocation => {
+    const currentAmount = categoryMap.get(allocation.category) || 0;
+    categoryMap.set(allocation.category, currentAmount + allocation.amount);
+  });
+  console.log('Category map:', Object.fromEntries(categoryMap)); // Debug log
+
+  const categories = Array.from(categoryMap.keys());
+  const amounts = Array.from(categoryMap.values());
+
+  // Generate colors array based on number of categories
+  const colors = [
+    'rgba(78, 115, 223, 0.8)',
+    'rgba(28, 200, 138, 0.8)',
+    'rgba(54, 185, 204, 0.8)',
+    'rgba(246, 194, 62, 0.8)',
+    'rgba(231, 74, 59, 0.8)',
+    'rgba(133, 135, 150, 0.8)'
+  ];
+
+  // Create color array matching the number of categories
+  const chartColors = categories.map((_, index) => colors[index % colors.length]);
+
+  new Chart(document.getElementById('savingsDistributionChart'), {
+    type: 'doughnut',
+    data: {
+      labels: categories,
+      datasets: [{
+        data: amounts,
+        backgroundColor: chartColors
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+
+  // Toggle custom category input
+  document.getElementById("category").addEventListener("change", function() {
+    const customInput = document.getElementById("customCategoryInput");
+    const customCategory = document.getElementById("customCategory");
+    if (this.value === "custom") {
+      customInput.style.display = "block";
+      customCategory.required = true;
+    } else {
+      customInput.style.display = "none";
+      customCategory.required = false;
+    }
+  });
+
+  // Handle allocation form submission
+  document.getElementById("saveAllocation").addEventListener("click", function() {
+    const form = document.getElementById("allocateSavingsForm");
+    if (form.checkValidity()) {
+      const categorySelect = document.getElementById("category");
+      const customCategory = document.getElementById("customCategory");
+      const category = categorySelect.value === "custom" ? customCategory.value : categorySelect.value;
+      const allocatedAmount = parseCommaNumber(document.getElementById("amount").value);
+
+      const allocationData = {
+        category: category,
+        amount: allocatedAmount
+      };
+
+      fetch("/add_savings_allocation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(allocationData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const modal = bootstrap.Modal.getInstance(document.getElementById("allocateSavingsModal"));
+          modal.hide();
+          form.reset();
+          document.getElementById("customCategoryInput").style.display = "none";
+          window.location.reload();
+        } else {
+          alert("Error: " + data.message);
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert("Error allocating savings. Please try again.");
+      });
+    } else {
+      form.reportValidity();
+    }
+  });
+
+  // Function to delete allocation
+  function deleteAllocation(id, category) {
+    if (confirm(`Are you sure you want to delete the allocation for ${category}?`)) {
+      fetch("/delete_savings_allocation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          allocation_id: id
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.reload();
+        } else {
+          alert("Error: " + data.message);
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert("Error deleting allocation. Please try again.");
+      });
+    }
+  }
+
+  // Function to edit allocation
+  function editAllocation(id, category, amount) {
+    document.getElementById("editAllocationId").value = id;
+    document.getElementById("editCategory").value = category;
+    document.getElementById("editAmount").value = formatCommaNumber(amount);
+
+    const modal = new bootstrap.Modal(document.getElementById("editAllocationModal"));
+    modal.show();
+  }
+
+  // Handle edit form submission
+  document.getElementById("updateAllocation").addEventListener("click", function() {
+    const form = document.getElementById("editAllocationForm");
+    if (form.checkValidity()) {
+      const newAmount = parseCommaNumber(document.getElementById("editAmount").value);
+      const updateData = {
+        allocation_id: parseInt(document.getElementById("editAllocationId").value),
+        category: document.getElementById("editCategory").value,
+        amount: newAmount
+      };
+
+      fetch("/update_savings_allocation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(updateData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const modal = bootstrap.Modal.getInstance(document.getElementById("editAllocationModal"));
+          modal.hide();
+          window.location.reload();
+        } else {
+          alert("Error: " + data.message);
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert("Error updating allocation. Please try again.");
+      });
+    } else {
+      form.reportValidity();
+    }
+  });
+</script>
+{% endblock %}
